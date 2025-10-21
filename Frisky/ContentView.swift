@@ -1,61 +1,34 @@
-//
-//  ContentView.swift
-//  Frisky
-//
-//  Created by Dylan Ramdath on 10/20/25.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @StateObject private var healthKitManager = HealthKitManager()
+
+    var isReceivingHealthData: Bool {
+            return healthKitManager.isAuthorized
+        }
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+        VStack() {
+            Text("Steps = \(healthKitManager.todaySteps)")
+            Text("Sleep = \(healthKitManager.todaySleepHours, specifier: "%.1f") hours")
+            Text("Heart Rate = \(healthKitManager.todayHeartRateAvg) BPM")
+            Text("Active = \(healthKitManager.todayActiveMinutes, specifier: "%.0f") min")
+            Text("Exercise = \(healthKitManager.todayExerciseMinutes, specifier: "%.0f") min")
+            Text("Permission =  \(healthKitManager.isAuthorized ? "true" : "false")")
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+        .onAppear {
+            Task {
+                try? await healthKitManager.requestAuthorization()
+                healthKitManager.startObservingTodayData()
             }
+        }
+        .onDisappear {
+            healthKitManager.stopObserving()
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
