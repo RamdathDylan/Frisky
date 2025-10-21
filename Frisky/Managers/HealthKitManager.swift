@@ -11,6 +11,9 @@ class HealthKitManager: ObservableObject {
     @Published var todayActiveMinutes: Double = 0
     @Published var todayExerciseMinutes: Double = 0
 
+    private var stepQuery: HKObserverQuery?
+    private var healthQueries: [HKQuery] = []
+    
     let healthDataToRead: Set<HKSampleType> = [
         HKQuantityType(.stepCount),
         HKQuantityType(.heartRate),
@@ -32,6 +35,60 @@ class HealthKitManager: ObservableObject {
         }
     }
     
+    func startObservingTodayData() {
+        Task {
+            await updateTodayStats()
+        }
+        
+        let stepType = HKQuantityType(.stepCount)
+        let stepObserverQuery = HKObserverQuery(sampleType: stepType, predicate: nil) { [weak self] _, _, error in
+            if error != nil {
+                return
+            }
+            Task {
+                await self?.updateTodayStats()
+            }
+        }
+        
+        healthStore.execute(stepObserverQuery)
+        stepQuery = stepObserverQuery
+        
+        Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            Task {
+                await self?.updateTodayStats()
+            }
+        }
+    }
+    
+    @MainActor
+    func updateTodayStats() async {
+        let today = Date()
+        
+        do {
+            let steps = try await fetchSteps(for: today)
+            let sleep = try await fetchSleepHours(for: today)
+            let heartRate = try await fetchAverageHeartRate(for: today)
+            let active = try await fetchActiveMinutes(for: today)
+            let exercise = try await fetchExerciseMinutes(for: today)
+            
+            self.todaySteps = steps
+            self.todaySleepHours = sleep
+            self.todayHeartRateAvg = heartRate
+            self.todayActiveMinutes = active
+            self.todayExerciseMinutes = exercise} catch {
+            print("Error fetching today's stats: \(error)")
+        }
+    }
+    
+    func stopObserving() {
+        if let stepQuery = stepQuery {
+            healthStore.stop(stepQuery)
+        }
+        for query in healthQueries {
+            healthStore.stop(query)
+        }
+        healthQueries.removeAll()
+    }
     private func createPredicateForDay(date: Date) -> NSPredicate {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
