@@ -11,7 +11,6 @@ class HealthKitManager: ObservableObject {
     @Published var todayActiveMinutes: Double = 0
     @Published var todayExerciseMinutes: Double = 0
 
-    
     let healthDataToRead: Set<HKSampleType> = [
         HKQuantityType(.stepCount),
         HKQuantityType(.heartRate),
@@ -32,7 +31,17 @@ class HealthKitManager: ObservableObject {
             self.isAuthorized = true
         }
     }
+    
+    private func createPredicateForDay(date: Date) -> NSPredicate {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        return HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+    }
 }
+
+
 
 enum HealthKitError: Error {
     case notAvailable
