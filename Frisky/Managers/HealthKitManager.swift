@@ -63,6 +63,7 @@ class HealthKitManager: ObservableObject {
 
             return total
         }
+    
     private func fetchQuantityAverage(for quantityType: HKQuantityType, predicate: NSPredicate) async throws -> Double {
             let descriptor = HKSampleQueryDescriptor(
                 predicates: [.quantitySample(type: quantityType, predicate: predicate)],
@@ -81,7 +82,64 @@ class HealthKitManager: ObservableObject {
 
             return total / Double(samples.count)
         }
+    
+        func fetchSteps(for date: Date) async throws -> Int {
+            let stepType = HKQuantityType(.stepCount)
+            let predicate = createPredicateForDay(date: date)
+            
+            let steps = try await fetchQuantitySum(for: stepType, predicate: predicate)
+            return Int(steps)
+        }
+        
+        func fetchSleepHours(for date: Date) async throws -> Double {
+            let sleepType = HKCategoryType(.sleepAnalysis)
+            let predicate = createPredicateForDay(date: date)
+            
+            let descriptor = HKSampleQueryDescriptor(
+                predicates: [.categorySample(type: sleepType, predicate: predicate)],
+                sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)]
+            )
+            
+            let samples = try await descriptor.result(for: healthStore)
+            
+            var totalSleepSeconds: TimeInterval = 0
+            for sample in samples {
+                if sample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue ||
+                   sample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
+                   sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                   sample.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue {
+                    totalSleepSeconds += sample.endDate.timeIntervalSince(sample.startDate)
+                }
+            }
+            
+            return totalSleepSeconds / 3600 
+        }
+        
+        func fetchAverageHeartRate(for date: Date) async throws -> Int {
+            let heartRateType = HKQuantityType(.heartRate)
+            let predicate = createPredicateForDay(date: date)
+            
+            let average = try await fetchQuantityAverage(for: heartRateType, predicate: predicate)
+            return Int(average)
+        }
+        
+        func fetchActiveMinutes(for date: Date) async throws -> Double {
+            let moveType = HKQuantityType(.appleMoveTime)
+            let predicate = createPredicateForDay(date: date)
+            
+            let minutes = try await fetchQuantitySum(for: moveType, predicate: predicate)
+            return minutes
+        }
+        
+        func fetchExerciseMinutes(for date: Date) async throws -> Double {
+            let exerciseType = HKQuantityType(.appleExerciseTime)
+            let predicate = createPredicateForDay(date: date)
+            
+            let minutes = try await fetchQuantitySum(for: exerciseType, predicate: predicate)
+            return minutes
+        }
     }
+
 
 
 
