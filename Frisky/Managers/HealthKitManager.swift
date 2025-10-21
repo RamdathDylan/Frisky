@@ -5,6 +5,13 @@ class HealthKitManager: ObservableObject {
     let healthStore = HKHealthStore()
     @Published var isAuthorized = false
     
+    @Published var todaySteps: Int = 0
+    @Published var todaySleepHours: Double = 0
+    @Published var todayHeartRateAvg: Int = 0
+    @Published var todayActiveMinutes: Double = 0
+    @Published var todayExerciseMinutes: Double = 0
+
+    
     let healthDataToRead: Set<HKSampleType> = [
         HKQuantityType(.stepCount),
         HKQuantityType(.heartRate),
