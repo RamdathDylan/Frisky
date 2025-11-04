@@ -2,9 +2,18 @@ import SwiftUI
 
 struct AnimatedPetView: View {
     let mood: PetMood
+    let onPet: (() -> Void)?
     
     @State private var currentFrame = 0
-    @State private var timer: Timer?
+    @State private var isPetting = false
+    
+    let timer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
+    
+   
+    init(mood: PetMood, onPet: (() -> Void)? = nil) {
+        self.mood = mood
+        self.onPet = onPet
+    }
     
     var body: some View {
         Image(getCurrentFrameName())
@@ -12,11 +21,12 @@ struct AnimatedPetView: View {
             .interpolation(.none)
             .scaledToFit()
             .frame(width: 150, height: 150)
-            .onAppear {
-                startAnimation()
+            .scaleEffect(isPetting ? 0.95 : 1.0)
+            .onReceive(timer) { _ in
+                currentFrame = (currentFrame + 1) % getTotalFrames()
             }
-            .onDisappear {
-                stopAnimation()
+            .onTapGesture {
+                petTheCat()
             }
     }
     
@@ -48,44 +58,33 @@ struct AnimatedPetView: View {
         }
     }
     
-  
-    private func startAnimation() {
+    func petTheCat() {
+        let impact = UIImpactFeedbackGenerator(style: .medium)
+        impact.impactOccurred()
         
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            currentFrame += 1
-            
-            if currentFrame >= getTotalFrames() {
-                currentFrame = 0
+        
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+            isPetting = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                isPetting = false
             }
         }
-    }
-    
-    private func stopAnimation() {
-        timer?.invalidate()
-        timer = nil
-    }
-}
+        
+        print("🐾 Pet the cat!")
+        
 
-
-enum PetMood {
-    case happy
-    case neutral
-    case sad
-    case tired
+        onPet?()
+    }
 }
 
 #Preview {
-    VStack(spacing: 30) {
-        Text("Happy")
+    ZStack {
+        Color.cyan.opacity(0.2)
+            .ignoresSafeArea()
+        
         AnimatedPetView(mood: .happy)
-        
-        Text("Neutral")
-        AnimatedPetView(mood: .neutral)
-        
-        Text("Sad")
-        AnimatedPetView(mood: .sad)
-        
-        Text("Tired")
-        AnimatedPetView(mood: .tired)
     }
 }

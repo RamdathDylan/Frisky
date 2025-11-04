@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 
 class HealthKitManager: ObservableObject {
+    static let shared = HealthKitManager()
     let healthStore = HKHealthStore()
     @Published var isAuthorized = false
     

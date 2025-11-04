@@ -10,9 +10,9 @@ struct FriskyApp: App {
         .modelContainer(for: [
             UserProfile.self,
             Pet.self,
-            DailyHealthData.self,
+            CheckIn.self,
             HealthGoal.self,
-            CheckIn.self
+            DailyHealthData.self
         ])
     }
 }
